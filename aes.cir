@@ -1,0 +1,61 @@
+// TODO: fill out
+
+// TODO: infer below 
+Int(KeySize, RoundCount)
+CHOOSE Mode:
+    Mode128:
+        KeySize, RoundCount = 128, 10
+    Mode192:
+        KeySize, RoundCount = 192, 12
+    Mode256:
+        KeySize, RoundCount = 256, 14
+
+// Mode = {Mode128, Mode192, Mode256}
+
+// TODO: infer below
+Int(RowCount, ColumCount)
+RowCount = 4
+ColumCount = 4
+STRUCTURE State:
+    Byte Array(RowCount ColumCount)
+
+// ---> typedef uint8_t State[4][4];
+
+STRUCTURE RoundKey:
+    PASS
+
+METHOD Encrypt:
+    VOLATILE State(state)
+    KeyExpansion()
+    // initial round key addition
+    AddRoundKey()
+    // interior rounds
+    REPEAT RoundCount - 1 TIMES:
+        SubBytes()
+        ShiftRows(state)
+        MixColumns()
+        AddRoundKey()
+    // final round
+    SubBytes()
+    ShiftRows()
+    AddRoundKey()
+
+METHOD KeyExpansion:
+    PASS
+
+METHOD SubBytes:
+    PASS
+
+METHOD ShiftRows(state):
+    FOR rowIndex = 1 TO RowCount:
+        // the amount to shift increases with the row index
+        ShiftLeftBy(state[rowIndex], rowIndex)
+
+METHOD ShiftLeftBy(row, amount):
+    TODO
+
+METHOD MixColumns(state):
+    PASS
+
+METHOD AddRoundKey:
+    PASS

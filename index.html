@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cryptographic IR (AES)</title>
+    <link rel="STYLESHEET" href="./main.css">
+    <script src="./crypto-ir.js"></script>
+</head>
+<body>
+<header><h1>CryptoIR</h1></header>
+<h2>Input</h2>
+<textarea id="ir-input"></textarea>
+<h2>Options</h2>
+<div id="convert-options">
+    <!-- todo: select operation -->
+    <label for="ir-target">Target: </label><select id="ir-target">
+        <option>AES</option>
+    </select>
+    <label for="ir-destination">Destination: </label><select id="ir-destination">
+        <option>Skeleton</option>
+    </select>
+</div>
+<h2>Output</h2>
+<textarea readonly id="ir-output"></textarea>
+</body>
+</html>

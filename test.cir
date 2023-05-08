@@ -1,0 +1,12 @@
+// current testing code
+
+METHOD Test:
+    TestFoo()
+    TestBar()
+    TestBar()
+
+METHOD TestFoo:
+    PASS
+
+METHOD TestBar:
+    PASS
