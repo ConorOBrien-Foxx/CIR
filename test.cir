@@ -2,8 +2,8 @@
 
 SETMODE Mode(Rad, Cool, Square)
 DEFAULT Mode = Cool
+
 DEFINE Mode = Rad
-/// redefine mode
 
 Int(RowCount, ColumCount)
 RowCount = 4
@@ -16,12 +16,16 @@ STRUCTURE State:
     Array(Byte, RowCount, ColumCount)
 
 METHOD Test:
-    TestFoo()
+    TestFoo(10, 15)
     TestBar()
     TestBar()
+    TestBaz(1000)
 
-METHOD TestFoo:
+METHOD TestFoo(Byte x, Int y):
     PASS
 
 METHOD TestBar:
+    PASS
+
+METHOD TestBaz(Int something):
     PASS

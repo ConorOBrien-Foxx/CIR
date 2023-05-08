@@ -313,19 +313,41 @@ export class TreeParser {
     
     parseMethodDeclaration() {
         // console.log("> parsing method");
-        // TODO: methods with parameters
-        assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.Colon ]),
-            "Malformed METHOD command");
-        let methodName = this.findTokenFromOffset(1, TokenTypes.Word).raw;;
+        let parameters = [];
+        let hasParameters;
+        if(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.Colon ])) {
+            hasParameters = false;
+        }
+        else if(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.OpenParen ])) {
+            hasParameters = true;
+        }
+        else {
+            assert(null, "Malformed METHOD command");
+        }
+        let methodName = this.findTokenFromOffset(1, TokenTypes.Word).raw;
         this.skipMatched();
+        // procure paramters if relevant
+        if(hasParameters) {
+            parameters = this.parseParameterized();
+            assert(this.hasAhead(TokenTypes.Colon), "Expected colon following METHOD argument list");
+            this.tokenIndex++;
+        }
+        // assert at main level
         let baseLevel = this.indent.level;
-        assert(this.indent.level === 0, "Can only have method declarations at base level");
+        assert(this.indent.level === 0,
+            "Can only have method declarations at base level");
+        
+        // obtain representation for children
         let nodeLength = this.nodes.length;
         // console.group();
         this.parse(baseLevel + 1);
         // console.groupEnd();
         let children = this.nodes.splice(nodeLength);
-        this.addNewNode(TreeNodeTypes.MethodDeclaration, { name: methodName }, children);
+
+        this.addNewNode(TreeNodeTypes.MethodDeclaration, {
+            name: methodName,
+            parameters,
+        }, children);
     }
     
     parsePass() {

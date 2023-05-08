@@ -1,5 +1,6 @@
 import { TreeNodeTypes } from "./tree-parse.js";
 import { toImplement, assert } from "./util.js";
+import { TokenTypes } from "./tokenize.js";
 
 // to C
 
@@ -41,6 +42,20 @@ export class CSkeletonizer {
             this.skeletonizeNode(node);
         }
     }
+
+    inferType(token) {
+        if(token.type === TokenTypes.Number) {
+            return CSkeletonizer.CTypeMap["Int"];
+        }
+        // TODO: local scope
+        else if(token.type === TokenTypes.Word) {
+            let typeInfo = this.typeInfo[token.raw];
+            assert(typeInfo, `I have no context on what ${typeInfo} is`);
+        }
+        else {
+            assert(null, `Cannot infer the type of ${token.dump()}`);
+        }
+    } 
 
     skeletonizeNode(node, level = 0) {
         if(node.type === TreeNodeTypes.Comment) {
@@ -92,10 +107,19 @@ export class CSkeletonizer {
             }
         }
         else if(node.type === TreeNodeTypes.MethodDeclaration) {
-            let { name } = node.value;
-            // TODO: more than void-void calls
-            this.headerLines.push(`void ${name}(void);`)
-            this.emit(`void ${name} (void) {`);
+            let { name, parameters } = node.value;
+            // TODO: return types
+            assert(parameters.length % 2 === 0, "Expected a list of type-name pairs");
+            let typedParameters = [];
+            for(let i = 0; i < parameters.length; i += 2) {
+                let cType = CSkeletonizer.CTypeMap[parameters[i].raw];
+                let paramName = parameters[i + 1].raw;
+                typedParameters.push(`${cType} ${paramName}`);
+            }
+            // coaelesce empty arguments to the more proper ...fn(void) syntax
+            let paramSignature = typedParameters.join(", ") || "void";
+            this.headerLines.push(`void ${name}(${paramSignature});`)
+            this.emit(`void ${name} (${paramSignature}) {`);
             this.emitGroupStart();
             for(let child of node.children) {
                 this.skeletonizeNode(child, level + 1);
@@ -111,6 +135,9 @@ export class CSkeletonizer {
             let joinedParameters = parameters
                 .map(token => token.raw)
                 .join(", ");
+            // // infer type
+            // let inferredType = parameters.map(token => this.inferType(token));
+            // console.log("INFERRED", inferredType);
             this.emit(`${methodName}(${joinedParameters});`);
         }
         else if(node.type === TreeNodeTypes.Pass) {
@@ -124,7 +151,7 @@ export class CSkeletonizer {
             let defineInfo = this.defineInfo[name];
             let macroName = name + "_" + defaultValue;
             let condition = defineInfo.options
-                .map(option => `!defined(${macroName})`)
+                .map(option => `!defined(${name}_${option})`)
                 .join(" && ");
             this.headerLines.push(`#if ${condition}`);
             this.headerLines.push(`  #define ${macroName}`);
