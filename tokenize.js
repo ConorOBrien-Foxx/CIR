@@ -1,24 +1,4 @@
-const fs = require("fs");
-
-class AssertionError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = "AssertionError";
-    }
-}
-
-const assert = (expression, message="Assertion failed") => {
-    if(!expression) {
-        throw new AssertionError(message);
-    }
-};
-
-const toImplement = (message) => assert(null, "TODO: IMPLEMENT `" + message + "`");
-
-const warn = (message) => {
-    console.warn(message);
-    // TODO: warns as errors
-};
+import { assert, toImplement, warn } from "./util.js";
 
 const TokenTypes = {
     Word: Symbol("TokenTypes.Word"),
@@ -31,10 +11,12 @@ const TokenTypes = {
     SetEquals: Symbol("TokenTypes.SetEquals"),
     Keyword: Symbol("TokenTypes.Keyword"),
     Number: Symbol("TokenTypes.Number"),
+    Comment: Symbol("TokenTypes.Comment"),
 };
 
 const TokenRegexes = [
     [ /^(?:STRUCTURE|METHOD|PASS|REPEAT)\b/i, TokenTypes.Keyword ],
+    [ /^(?:\/\/)[\s\S]*?(?:\n|$)/, TokenTypes.Comment ],
     [ /^[ \t]+/, TokenTypes.Spaces ],
     [ /^:/, TokenTypes.Colon ],
     [ /^[A-Za-z_][A-Za-z0-9_]*/, TokenTypes.Word ],
@@ -62,7 +44,7 @@ class Token {
     }
 }
 
-const tokenize = (string) => {
+export const tokenize = (string) => {
     let tokens = [];
     let i = 0;
     while(i < string.length) {
@@ -71,7 +53,7 @@ const tokenize = (string) => {
         let token;
         
         for(let [ regex, type ] of TokenRegexes) {
-            let matched = slice.match(regex)
+            let matched = slice.match(regex);
             if(matched) {
                 let raw = matched[0];
                 token = Token.from({ type, raw});
@@ -106,6 +88,7 @@ const TreeNodeTypes = {
     MethodDeclaration: Symbol("TreeNodeTypes.MethodDeclaration"),
     MethodCall: Symbol("TreeNodeTypes.MethodCall"),
     Pass: Symbol("TreeNodeTypes.Pass"),
+    Comment: Symbol("TreeNodeTypes.Comment"),
 };
 
 class TreeNode {
@@ -171,7 +154,7 @@ class TreeParser {
         }
         
         let j = 0;
-        for(let i = 0; i < toMatch.length && this.tokenIndex + j < tokens.length; i++, j++) {
+        for(let i = 0; i < toMatch.length && this.tokenIndex + j < this.tokens.length; i++, j++) {
             // skip spaces within matched expression
             while(ignoreSpaces && this.getTokenOffset(j).type === TokenTypes.Spaces) {
                 j++;
@@ -265,7 +248,10 @@ class TreeParser {
             return true;
         }
         
-        if(this.hasAhead(TokenTypes.Keyword)) {
+        if(this.hasAhead(TokenTypes.Comment)) {
+            this.parseComment();
+        }
+        else if(this.hasAhead(TokenTypes.Keyword)) {
             let keyword = this.getTokenOffset(0).raw;
             if(keyword !== keyword.toUpperCase()) {
                 keyword = keyword.toUpperCase();
@@ -287,6 +273,11 @@ class TreeParser {
         }
         
         return false;
+    }
+
+    parseComment() {
+        this.tokenIndex++;
+        this.addNewNode(TreeNodeTypes.Comment);
     }
     
     parseExpression() {
@@ -430,7 +421,7 @@ class TreeParser {
     }
 }
 
-const makeTree = (tokens) => {
+export const makeTree = (tokens) => {
     let parser = new TreeParser(tokens);
     try {
         console.log(parser.parse());
@@ -452,11 +443,3 @@ const makeTree = (tokens) => {
         throw e;
     }
 };
-
-// const text = fs.readFileSync("evaluate.cir");
-const text = fs.readFileSync("test.cir").toString();
-
-let tokens = tokenize(text);
-let tree = makeTree(tokens);
-
-console.log(tree);
