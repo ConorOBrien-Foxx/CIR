@@ -1,12 +1,12 @@
 import { TokenTypes } from "./tokenize.js";
 import { assert, toImplement, warn } from "./util.js";
 
-const WordTypes = {
+export const WordTypes = {
     Type: Symbol("WordTypes.Type"),
     Method: Symbol("WordTypes.Method"),
 };
 
-const TreeNodeTypes = {
+export const TreeNodeTypes = {
     Declaration: Symbol("TreeNodeTypes.Declaration"),
     Assignment: Symbol("TreeNodeTypes.Assignment"),
     Structure: Symbol("TreeNodeTypes.Structure"),
@@ -28,7 +28,7 @@ class TreeNode {
     }
 }
 
-class TreeParser {
+export class TreeParser {
     constructor(tokens) {
         this.tokenIndex = 0;
         this.tokens = tokens;
@@ -126,7 +126,7 @@ class TreeParser {
     }
     
     parseInitialWhitespace() {
-        console.log("~ parsing initial whitespace");
+        // console.log("~ parsing initial whitespace");
         let spaceLevel, spaceCount;
         if(this.hasAhead(TokenTypes.Spaces)) {
             let spaces = this.getTokenOffset(0).raw;
@@ -155,8 +155,8 @@ class TreeParser {
      * Returns `true` if the step indicates parsing at the level is done, `false` otherwise.
      */
     parseStep(minLevel = 0) {
-        console.log("-- parse once --");
-        console.log(`[BEFORE RECALC] Current level: ${this.indent.level}, Minimum level: ${minLevel}`);
+        // console.log("-- parse once --");
+        // console.log(`[BEFORE RECALC] Current level: ${this.indent.level}, Minimum level: ${minLevel}`);
         // skip line breaks
         while(this.hasAhead(TokenTypes.LineBreak)) {
             this.parseLineBreak();
@@ -168,7 +168,7 @@ class TreeParser {
         
         this.parseInitialWhitespace();
         
-        console.log(`[BEFORE COMPARE] Current level: ${this.indent.level}, Minimum level: ${minLevel}`);
+        // console.log(`[BEFORE COMPARE] Current level: ${this.indent.level}, Minimum level: ${minLevel}`);
         if(!this.hasTokensLeft() || this.indent.level < minLevel) {
             return true;
         }
@@ -186,7 +186,7 @@ class TreeParser {
                 this.parseStructure();
             }
             else if(keyword === "METHOD") {
-                this.parseMethod();
+                this.parseMethodDeclaration();
             }
             else if(keyword === "PASS") {
                 this.parsePass();
@@ -206,7 +206,7 @@ class TreeParser {
     }
     
     parseExpression() {
-        console.log("> parse expression");
+        // console.log("> parse expression");
         // call or definition
         if(this.hasSequenceAhead([ TokenTypes.Word, TokenTypes.OpenParen ])) {
             let word = this.getTokenOffset(0);
@@ -231,25 +231,31 @@ class TreeParser {
         }
         return true;
     }
+
+    findTokenFromOffset(offset, type) {
+        return this.tokens
+            .slice(this.tokenIndex + offset)
+            .find(token => token.type === type);
+    }
     
     parseStructure() {
-        console.log("> parsing structure");
+        // console.log("> parsing structure");
         assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.Colon ]),
             "Malformed STRUCTURE command");
         
-        let structureName = this.getTokenOffset(1).raw;
+        let structureName = this.findTokenFromOffset(1, TokenTypes.Word).raw;
         this.skipMatched();
         
         assert(this.hasAhead(TokenTypes.LineBreak), "Expected line break after STRUCTURE command");
         this.tokenIndex++;
         
-        console.log(this.tokens.slice(this.tokenIndex, this.tokenIndex + 3));
+        // console.log(this.tokens.slice(this.tokenIndex, this.tokenIndex + 3));
         // parse body
         let info = this.parseInitialWhitespace();
         let baseLevel = info.previous;
         let indentedLevel = info.next;
         
-        console.log("WHITESPACE INFO", info);
+        // console.log("WHITESPACE INFO", info);
         // TODO: multiple lines
         this.parseStep();//TODO: replace with call to special method?
         let node = this.nodes.pop();
@@ -259,19 +265,19 @@ class TreeParser {
         }, [ node ]);
     }
     
-    parseMethod() {
-        console.log("> parsing method");
+    parseMethodDeclaration() {
+        // console.log("> parsing method");
         // TODO: methods with parameters
         assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.Colon ]),
             "Malformed METHOD command");
-        let methodName = this.getTokenOffset(1).raw;
+        let methodName = this.findTokenFromOffset(1, TokenTypes.Word).raw;;
         this.skipMatched();
         let baseLevel = this.indent.level;
         assert(this.indent.level === 0, "Can only have method declarations at base level");
         let nodeLength = this.nodes.length;
-        console.group();
+        // console.group();
         this.parse(baseLevel + 1);
-        console.groupEnd();
+        // console.groupEnd();
         let children = this.nodes.splice(nodeLength);
         this.addNewNode(TreeNodeTypes.MethodDeclaration, { name: methodName }, children);
     }
@@ -282,12 +288,12 @@ class TreeParser {
     }
     
     parseLineBreak() {
-        console.log("> skipping line break");
+        // console.log("> skipping line break");
         this.tokenIndex++;
     }
     
     parseAssignmentExpression(word) {
-        console.log("> assignment");
+        // console.log("> assignment");
         let variableName = word.raw;
         let expression = [];
         while(this.hasTokensLeft()) {
@@ -302,10 +308,10 @@ class TreeParser {
     }
     
     parseTypeDeclaration(word) {
-        console.log("> parse type decl");
+        // console.log("> parse type decl");
         let declared = this.parseParameterized();
-        assert(declared.length > 0, `Expected 1 or more variables for ${type} variable declaration.`);
         let type = word.raw;
+        assert(declared.length > 0, `Expected 1 or more variables for ${type} variable declaration.`);
         if(type === "Array") {
             // parameterized declaration
             this.addNewNode(TreeNodeTypes.Declaration, { type, declared });
@@ -320,7 +326,7 @@ class TreeParser {
     }
     
     parseMethodEvaluation(word) {
-        console.log("> parse method eval");
+        // console.log("> parse method eval");
         let parameters = this.parseParameterized();
         this.addNewNode(TreeNodeTypes.MethodCall, { method: word, parameters });
     }
@@ -349,7 +355,7 @@ class TreeParser {
 export const makeTree = (tokens) => {
     let parser = new TreeParser(tokens);
     try {
-        console.log(parser.parse());
+        return parser.parse();
     }
     catch(e) {
         console.log("XXX-- ERROR ENCOUNTERED --XXX");

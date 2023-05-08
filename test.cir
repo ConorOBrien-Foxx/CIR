@@ -1,5 +1,15 @@
 // current testing code
 
+Int(RowCount, ColumCount)
+RowCount = 4
+ColumCount = 4
+
+STRUCTURE Name:
+    Array(Byte, 256)
+
+STRUCTURE State:
+    Array(Byte, RowCount, ColumCount)
+
 METHOD Test:
     TestFoo()
     TestBar()
