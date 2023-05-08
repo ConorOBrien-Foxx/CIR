@@ -14,6 +14,9 @@ export const TreeNodeTypes = {
     MethodCall: Symbol("TreeNodeTypes.MethodCall"),
     Pass: Symbol("TreeNodeTypes.Pass"),
     Comment: Symbol("TreeNodeTypes.Comment"),
+    DefaultDefine: Symbol("TreeNodeTypes.DefaultDefine"),
+    Define: Symbol("TreeNodeTypes.Define"),
+    SetMode: Symbol("TreeNodeTypes.SetMode"),
 };
 
 class TreeNode {
@@ -191,6 +194,18 @@ export class TreeParser {
             else if(keyword === "PASS") {
                 this.parsePass();
             }
+            else if(keyword === "DEFAULT") {
+                this.parseDefault();
+            }
+            else if(keyword === "DEFINE") {
+                this.parseDefine();
+            }
+            else if(keyword === "SETMODE") {
+                this.parseSetMode();
+            }
+            else {
+                assert(null, `Unhandled keyword: ${keyword}`);
+            }
         }
         else {
             let succeeded = this.parseExpression();
@@ -200,9 +215,40 @@ export class TreeParser {
         return false;
     }
 
-    parseComment() {
+    parseSetMode() {
+        assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.OpenParen ]),
+            "Malformed SETMODE command");
+        let name = this.findTokenFromOffset(1, TokenTypes.Word).raw;
+        this.skipMatched();
+        let modes = this.parseParameterized();
+        this.addNewNode(TreeNodeTypes.SetMode, { name, modes });
+    }
+
+    parseDefault() {
+        let [ defineName, defaultValue ] = this.parseKeywordEquals("DEFAULT");
+        this.addNewNode(TreeNodeTypes.DefaultDefine, { name: defineName, default: defaultValue });
+    }
+
+    parseDefine() {
+        let [ defineName, value ] = this.parseKeywordEquals("DEFINE");
+        this.addNewNode(TreeNodeTypes.Define, { name: defineName, value: value });
+    }
+
+    parseKeywordEquals(name) {
+        assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.SetEquals ]),
+            `Malformed ${name} command`);
+        let keyName = this.findTokenFromOffset(1, TokenTypes.Word).raw;
+        this.skipMatched();
+
+        let valueName = this.getTokenOffset(0).raw;
         this.tokenIndex++;
-        this.addNewNode(TreeNodeTypes.Comment);
+
+        return [ keyName, valueName ];
+    }
+
+    parseComment() {
+        this.addNewNode(TreeNodeTypes.Comment, { comment: this.getTokenOffset(0).raw });
+        this.tokenIndex++;
     }
     
     parseExpression() {

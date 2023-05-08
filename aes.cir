@@ -2,6 +2,8 @@
 
 // TODO: infer below 
 Int(KeySize, RoundCount)
+
+DEFAULT Mode = Mode128
 CHOOSE Mode:
     Mode128:
         KeySize, RoundCount = 128, 10
@@ -25,7 +27,7 @@ STRUCTURE RoundKey:
     PASS
 
 METHOD Encrypt:
-    VOLATILE State(state)
+    MUTABLE State(state)
     KeyExpansion()
     // initial round key addition
     AddRoundKey()

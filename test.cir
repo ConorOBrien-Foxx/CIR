@@ -1,5 +1,10 @@
 // current testing code
 
+SETMODE Mode(Rad, Cool, Square)
+DEFAULT Mode = Cool
+DEFINE Mode = Rad
+/// redefine mode
+
 Int(RowCount, ColumCount)
 RowCount = 4
 ColumCount = 4

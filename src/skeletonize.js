@@ -12,10 +12,12 @@ export class CSkeletonizer {
     constructor(treeNodes, indentCount = 4) {
         this.treeNodes = treeNodes;
         this.typeInfo = {};
+        this.defineInfo = {};
         this.codeLines = [];
-        this.headerLines = [
+        this.includeLines = [
             "#include <stdint.h>",
-        ];
+        ]
+        this.headerLines = [];
         this.emitLevel = 0;
         this.indentCount = indentCount;
     }
@@ -42,7 +44,13 @@ export class CSkeletonizer {
 
     skeletonizeNode(node, level = 0) {
         if(node.type === TreeNodeTypes.Comment) {
-            return;
+            /*
+            // TODO: make mesh well with other comment types
+            let { comment } = node.value;
+            if(comment.startsWith("///")) {
+                this.emit(`// ${comment.slice(3).trimLeft()}`);
+            }
+            */
         }
         else if(node.type === TreeNodeTypes.Declaration) {
             let cType = CSkeletonizer.CTypeMap[node.value.type];
@@ -97,7 +105,7 @@ export class CSkeletonizer {
         }
         else if(node.type === TreeNodeTypes.MethodCall) {
             assert(level > 0, "Cannot call method at top level");
-            console.log(node);
+            // console.log(node);
             let { method, parameters } = node.value;
             let methodName = method.raw;
             let joinedParameters = parameters
@@ -109,9 +117,56 @@ export class CSkeletonizer {
             // NOTE: the TODO comment is actually supposed to be emitted here
             this.emit("//TODO:");
         }
+        else if(node.type === TreeNodeTypes.DefaultDefine) {
+            let { name, default: defaultValue } = node.value;
+            this.assertValidDefine(name, defaultValue);
+
+            let defineInfo = this.defineInfo[name];
+            let macroName = name + "_" + defaultValue;
+            let condition = defineInfo.options
+                .map(option => `!defined(${macroName})`)
+                .join(" && ");
+            this.headerLines.push(`#if ${condition}`);
+            this.headerLines.push(`  #define ${macroName}`);
+            this.headerLines.push("#endif");
+        }
+        else if(node.type === TreeNodeTypes.Define) {
+            let { name, value } = node.value;
+            this.assertValidDefine(name, value);
+
+            let defineInfo = this.defineInfo[name];
+            let macroName = name + "_" + value;
+            let current = defineInfo.current;
+            if(current) {
+                this.headerLines.push(`#undef ${current}`);
+            }
+            this.headerLines.push(`#define ${macroName}`);
+            defineInfo.current = macroName;
+
+        }
+        else if(node.type === TreeNodeTypes.SetMode) {
+            let { name, modes } = node.value;
+            let options = modes.map(token => token.raw);
+            // TODO: non mutually exclusive modes?
+            this.defineInfo[name] = {
+                current: null,
+                options,
+            };
+            let fullOptions = options
+                .map(option => `${name}_${option}`)
+                .join(" | ");
+            this.headerLines.push(`/** ${name}: ${fullOptions} **/`);
+        }
         else {
             toImplement(`${node.type.toString()}`);
         }
+    }
+
+    assertValidDefine(name, value) {
+        let defineInfo = this.defineInfo[name];
+        assert(defineInfo, `Undefined mode ${value}. Did you forget a SETMODE?`);
+        assert(defineInfo.options.includes(value),
+            `${value} is not a valid mode for ${name}. Valid options include: ${defineInfo.options.join(" | ")}`);
     }
 }
 
@@ -119,6 +174,8 @@ export const skeletonize = (treeNodes) => {
     let skeletonizer = new CSkeletonizer(treeNodes);
     skeletonizer.skeletonize();
     return [
+        ...skeletonizer.includeLines,
+        "",
         ...skeletonizer.headerLines,
         "",
         ...skeletonizer.codeLines,

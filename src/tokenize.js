@@ -12,8 +12,20 @@ export const TokenTypes = {
     Comment: Symbol("TokenTypes.Comment"),
 };
 
+const KEYWORD_LIST = `
+    STRUCTURE
+    METHOD
+    REPEAT TIMES
+    SETMODE DEFAULT DEFINE CHOOSE
+    FOR TO
+    PASS
+`.trim().split(/\s+/);
+
+// add /i flag to allow mixed case keywords
+const KeywordRegex = new RegExp(`^(?:${KEYWORD_LIST.join("|")})\\b`);
+
 const TokenRegexes = [
-    [ /^(?:STRUCTURE|METHOD|PASS|REPEAT)\b/i, TokenTypes.Keyword ],
+    [ KeywordRegex, TokenTypes.Keyword ],
     [ /^(?:\/\/)[\s\S]*?(?:\n|$)/, TokenTypes.Comment ],
     [ /^[ \t]+/, TokenTypes.Spaces ],
     [ /^:/, TokenTypes.Colon ],
