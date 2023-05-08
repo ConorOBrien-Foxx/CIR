@@ -10,6 +10,8 @@ export class CSkeletonizer {
         "Byte": "uint8_t",
     };
 
+    static MAX_TEMPORARY_COUNT = 10;
+
     constructor(treeNodes, indentCount = 4) {
         this.treeNodes = treeNodes;
         this.typeInfo = {};
@@ -21,6 +23,25 @@ export class CSkeletonizer {
         this.headerLines = [];
         this.emitLevel = 0;
         this.indentCount = indentCount;
+        this.temporaries = {};
+        for(let i = 0; i < CSkeletonizer.MAX_TEMPORARY_COUNT; i++) {
+            this.temporaries[`_${i}`] = false;
+        }
+    }
+
+    getTemporary() {
+        for(let i = 0; i < CSkeletonizer.MAX_TEMPORARY_COUNT; i++) {
+            let name = `_${i}`;
+            if(!this.temporaries[name]) {
+                this.temporaries[name] = true;
+                return name;
+            }
+        }
+        assert(null, "No more temporaries available");
+    }
+
+    releaseTemporary(name) {
+        this.temporaries[name] = false;
     }
 
     emitGroupStart() {
@@ -50,7 +71,7 @@ export class CSkeletonizer {
         // TODO: local scope
         else if(token.type === TokenTypes.Word) {
             let typeInfo = this.typeInfo[token.raw];
-            assert(typeInfo, `I have no context on what ${typeInfo} is`);
+            assert(typeInfo, `I have no context on what ${token.dump()} is`);
         }
         else {
             assert(null, `Cannot infer the type of ${token.dump()}`);
@@ -68,11 +89,13 @@ export class CSkeletonizer {
             */
         }
         else if(node.type === TreeNodeTypes.Declaration) {
-            let cType = CSkeletonizer.CTypeMap[node.value.type];
-            let variables = node.value.declared.map(token => token.raw);
+            let { type, declared, mutable } = node.value;
+            console.log("VARIABLE", type,declared,mutable);
+            let cType = CSkeletonizer.CTypeMap[type];
+            let variables = declared.map(token => token.raw);
             // TODO: array type
             for(let v of variables) {
-                this.typeInfo[v] = cType;
+                this.typeInfo[v] =  { cType, mutable };
             }
         }
         else if(node.type === TreeNodeTypes.Assignment) {
@@ -81,9 +104,14 @@ export class CSkeletonizer {
             let cExpression = expression
                 .map(token => token.raw)
                 .join(" ");
-            let cType = this.typeInfo[variable];
+            let { cType, mutable } = this.typeInfo[variable];
             // console.log(node.value.expression);
-            this.emit(`#define ${variable} ((${cType}) ${cExpression})`);
+            if(mutable) {
+                this.emit(`${variable} = ${cExpression};`);
+            }
+            else {
+                this.emit(`#define ${variable} ((${cType}) ${cExpression})`);
+            }
         }
         else if(node.type === TreeNodeTypes.Structure) {
             // TODO: allow for more complicated structures

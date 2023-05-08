@@ -19,6 +19,7 @@ const KEYWORD_LIST = `
     SETMODE DEFAULT DEFINE CHOOSE
     FOR TO
     PASS
+    MUTABLE
 `.trim().split(/\s+/);
 
 // add /i flag to allow mixed case keywords

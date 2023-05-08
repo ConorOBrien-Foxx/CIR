@@ -16,7 +16,9 @@ STRUCTURE State:
     Array(Byte, RowCount, ColumCount)
 
 METHOD Test:
-    TestFoo(10, 15)
+    MUTABLE Int(temp)
+    temp = 15
+    TestFoo(10, temp)
     TestBar()
     TestBar()
     TestBaz(1000)

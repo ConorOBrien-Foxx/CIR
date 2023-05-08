@@ -1,4 +1,4 @@
-import { TokenTypes } from "./tokenize.js";
+import { Token, TokenTypes } from "./tokenize.js";
 import { assert, toImplement, warn } from "./util.js";
 
 export const WordTypes = {
@@ -203,6 +203,9 @@ export class TreeParser {
             else if(keyword === "SETMODE") {
                 this.parseSetMode();
             }
+            else if(keyword === "MUTABLE") {
+                this.parseMutable();
+            }
             else {
                 assert(null, `Unhandled keyword: ${keyword}`);
             }
@@ -251,6 +254,17 @@ export class TreeParser {
         this.tokenIndex++;
     }
     
+    parseMutable() {
+        // TODO: static type validation
+        assert(this.hasSequenceAhead([ TokenTypes.Keyword ]));
+        this.skipMatched();
+        assert(this.parseExpression(), "Declaration must follow MUTABLE");
+        let declaration = this.nodes.at(-1);
+        assert(declaration.type === TreeNodeTypes.Declaration, "Declaration must follow MUTABLE");
+        declaration.value.mutable = true;
+    }
+
+    // returns true if was able to parse expression, false otherwise
     parseExpression() {
         // console.log("> parse expression");
         // call or definition
@@ -382,15 +396,14 @@ export class TreeParser {
         assert(declared.length > 0, `Expected 1 or more variables for ${type} variable declaration.`);
         if(type === "Array") {
             // parameterized declaration
-            this.addNewNode(TreeNodeTypes.Declaration, { type, declared });
         }
         else {
             // declare multiple as same type
             for(let { raw } of declared) {
                 this.variableTypes[raw] = type;
             }
-            this.addNewNode(TreeNodeTypes.Declaration, { type, declared });
         }
+        this.addNewNode(TreeNodeTypes.Declaration, { type, declared, mutable: false });
     }
     
     parseMethodEvaluation(word) {
