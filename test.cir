@@ -18,7 +18,8 @@ STRUCTURE State:
 METHOD Test:
     MUTABLE Int(temp)
     temp = 15
-    TestFoo(10, temp)
+    REPEAT temp - 1 TIMES:
+        TestFoo(10, temp)
     TestBar()
     TestBar()
     TestBaz(1000)

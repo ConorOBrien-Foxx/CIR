@@ -90,7 +90,7 @@ export class CSkeletonizer {
         }
         else if(node.type === TreeNodeTypes.Declaration) {
             let { type, declared, mutable } = node.value;
-            console.log("VARIABLE", type,declared,mutable);
+            // console.log("VARIABLE", type,declared,mutable);
             let cType = CSkeletonizer.CTypeMap[type];
             let variables = declared.map(token => token.raw);
             // TODO: array type
@@ -211,6 +211,22 @@ export class CSkeletonizer {
                 .map(option => `${name}_${option}`)
                 .join(" | ");
             this.headerLines.push(`/** ${name}: ${fullOptions} **/`);
+        }
+        else if(node.type === TreeNodeTypes.Repeat) {
+            //TODO: pretty print expression
+            // (e.g. `(3+4)` => `(3 + 4)` instead of `( 3 + 4 )`)
+            let conditionExpression = node.value.condition
+                .filter(token => token.type !== TokenTypes.Spaces)
+                .map(token => token.raw)
+                .join(" ");
+            let temp = this.getTemporary();
+            this.emit(`for(int ${temp} = 0; ${temp} < ${conditionExpression}; ${temp}++) {`);
+            this.emitGroupStart();
+            for(let child of node.children) {
+                this.skeletonizeNode(child, level + 1);
+            }
+            this.emitGroupEnd();
+            this.emit("}");
         }
         else {
             toImplement(`${node.type.toString()}`);

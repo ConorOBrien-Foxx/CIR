@@ -10,6 +10,7 @@ export const TokenTypes = {
     Keyword: Symbol("TokenTypes.Keyword"),
     Number: Symbol("TokenTypes.Number"),
     Comment: Symbol("TokenTypes.Comment"),
+    Operator: Symbol("TokenTypes.Operator"),
 };
 
 const KEYWORD_LIST = `
@@ -33,6 +34,7 @@ const TokenRegexes = [
     [ /^[A-Za-z_][A-Za-z0-9_]*/, TokenTypes.Word ],
     [ /^[0-9]+/, TokenTypes.Number ],
     [ /^[\r\n]+/, TokenTypes.LineBreak ],
+    [ /^(?:[-+*\/!~^|&]|or|and)/, TokenTypes.Operator ],
     [ /^\(/, TokenTypes.OpenParen ],
     [ /^\)/, TokenTypes.CloseParen ],
     [ /^,/, TokenTypes.Comma ],

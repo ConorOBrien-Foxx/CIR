@@ -17,6 +17,7 @@ export const TreeNodeTypes = {
     DefaultDefine: Symbol("TreeNodeTypes.DefaultDefine"),
     Define: Symbol("TreeNodeTypes.Define"),
     SetMode: Symbol("TreeNodeTypes.SetMode"),
+    Repeat: Symbol("TreeNodeTypes.Repeat"),
 };
 
 class TreeNode {
@@ -129,6 +130,7 @@ export class TreeParser {
     }
     
     parseInitialWhitespace() {
+        let oldIndex = this.tokenIndex;
         // console.log("~ parsing initial whitespace");
         let spaceLevel, spaceCount;
         if(this.hasAhead(TokenTypes.Spaces)) {
@@ -146,12 +148,15 @@ export class TreeParser {
             this.tokenIndex++;
         }
         else {
+            // console.log("DID NOT HAVE SPACES AHEAD WHILE LOOKING AT INITIAL WHITESPACE");
+            // console.log(this.getTokenOffset(0));
             spaceLevel = spaceCount = 0;
         }
         
         let previous = this.indent.level;
         this.indent.level = spaceLevel;
-        return { previous, next: spaceLevel };
+        // console.table({ previous, next: spaceLevel, spaceLevel, spaceCount });
+        return { previous, next: spaceLevel, oldIndex: oldIndex };
     }
     
     /**
@@ -169,10 +174,18 @@ export class TreeParser {
             return true;
         }
         
-        this.parseInitialWhitespace();
+        let oldIndent = Object.assign({}, this.indent);
+        let { oldIndex } = this.parseInitialWhitespace();
         
         // console.log(`[BEFORE COMPARE] Current level: ${this.indent.level}, Minimum level: ${minLevel}`);
-        if(!this.hasTokensLeft() || this.indent.level < minLevel) {
+        // console.log();
+        if(!this.hasTokensLeft()) {
+            return true;
+        }
+        if(this.indent.level < minLevel) {
+            // rollback to previous whitespace state
+            Object.assign(this.indent, oldIndent);
+            this.tokenIndex = oldIndex;
             return true;
         }
         
@@ -206,16 +219,36 @@ export class TreeParser {
             else if(keyword === "MUTABLE") {
                 this.parseMutable();
             }
+            else if(keyword === "REPEAT") {
+                this.parseRepeat();
+            }
             else {
                 assert(null, `Unhandled keyword: ${keyword}`);
             }
         }
         else {
-            let succeeded = this.parseExpression();
+            let succeeded = this.parseHeadExpression();
             assert(succeeded, `Unhandled token: ${this.getTokenOffset(0)?.dump()}`);
         }
         
         return false;
+    }
+
+    parseRepeat() {
+        console.log("> parsing repeat");
+        this.tokenIndex++;
+        let countExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Colon ])) {
+            countExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(this.hasTokensLeft(), "Runaway REPEAT loop");
+        assert(this.findTokenFromOffset(0, TokenTypes.Keyword).raw === "TIMES",
+            "Expected TIMES before Colon");
+        this.skipMatched();
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+        this.addNewNode(TreeNodeTypes.Repeat, { condition: countExpression }, children);
     }
 
     parseSetMode() {
@@ -258,14 +291,14 @@ export class TreeParser {
         // TODO: static type validation
         assert(this.hasSequenceAhead([ TokenTypes.Keyword ]));
         this.skipMatched();
-        assert(this.parseExpression(), "Declaration must follow MUTABLE");
+        assert(this.parseHeadExpression(), "Declaration must follow MUTABLE");
         let declaration = this.nodes.at(-1);
         assert(declaration.type === TreeNodeTypes.Declaration, "Declaration must follow MUTABLE");
         declaration.value.mutable = true;
     }
 
     // returns true if was able to parse expression, false otherwise
-    parseExpression() {
+    parseHeadExpression() {
         // console.log("> parse expression");
         // call or definition
         if(this.hasSequenceAhead([ TokenTypes.Word, TokenTypes.OpenParen ])) {
@@ -326,7 +359,7 @@ export class TreeParser {
     }
     
     parseMethodDeclaration() {
-        // console.log("> parsing method");
+        console.log("> parsing method");
         let parameters = [];
         let hasParameters;
         if(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.Colon ])) {
@@ -352,16 +385,22 @@ export class TreeParser {
             "Can only have method declarations at base level");
         
         // obtain representation for children
-        let nodeLength = this.nodes.length;
-        // console.group();
-        this.parse(baseLevel + 1);
-        // console.groupEnd();
-        let children = this.nodes.splice(nodeLength);
+        let children = this.descendParse(baseLevel);
 
         this.addNewNode(TreeNodeTypes.MethodDeclaration, {
             name: methodName,
             parameters,
         }, children);
+    }
+
+    descendParse(baseLevel) {
+        console.log(">>> going deeper", baseLevel, "->", baseLevel + 1);
+        let nodeLength = this.nodes.length;
+        console.group();
+        this.parse(baseLevel + 1);
+        console.groupEnd();
+        let children = this.nodes.splice(nodeLength);
+        return children;
     }
     
     parsePass() {
