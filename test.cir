@@ -16,13 +16,17 @@ STRUCTURE State:
     Array(Byte, RowCount, ColumCount)
 
 METHOD Test:
-    MUTABLE Int(temp)
+    MUTABLE Int(temp, other)
     temp = 15
+    other = TestReturn()
     REPEAT temp - 1 TIMES:
         TestFoo(10, temp)
     TestBar()
     TestBar()
     TestBaz(1000)
+
+METHOD TestReturn -> Int:
+    PASS
 
 METHOD TestFoo(Byte x, Int y):
     PASS

@@ -11,6 +11,7 @@ export const TokenTypes = {
     Number: Symbol("TokenTypes.Number"),
     Comment: Symbol("TokenTypes.Comment"),
     Operator: Symbol("TokenTypes.Operator"),
+    ReturnTypeIndicator: Symbol("TokenTypes.ReturnTypeIndicator"),
 };
 
 const KEYWORD_LIST = `
@@ -31,6 +32,7 @@ const TokenRegexes = [
     [ /^(?:\/\/)[\s\S]*?(?:\n|$)/, TokenTypes.Comment ],
     [ /^[ \t]+/, TokenTypes.Spaces ],
     [ /^:/, TokenTypes.Colon ],
+    [ /^(?:->|→)/, TokenTypes.ReturnTypeIndicator ],
     [ /^[A-Za-z_][A-Za-z0-9_]*/, TokenTypes.Word ],
     [ /^[0-9]+/, TokenTypes.Number ],
     [ /^[\r\n]+/, TokenTypes.LineBreak ],

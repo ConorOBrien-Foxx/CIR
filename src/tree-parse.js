@@ -54,6 +54,16 @@ export class TreeParser {
         return this.tokens[this.tokenIndex + i];
     }
     
+    getTokenOffsetNoSpaces(i) {
+        let result, j = i;
+        do {
+            result = this.tokens[this.tokenIndex + j];
+            j++;
+        }
+        while(result.type === TokenTypes.Spaces);
+        return result;
+    }
+
     addNode(node) {
         this.nodes.push(node);
     }
@@ -361,24 +371,30 @@ export class TreeParser {
     parseMethodDeclaration() {
         console.log("> parsing method");
         let parameters = [];
-        let hasParameters;
-        if(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.Colon ])) {
-            hasParameters = false;
-        }
-        else if(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.OpenParen ])) {
+        let returnType = null;
+        let hasParameters = false;
+        if(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.OpenParen ])) {
             hasParameters = true;
         }
         else {
-            assert(null, "Malformed METHOD command");
+            assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word ]),
+                "Malformed METHOD command");
         }
         let methodName = this.findTokenFromOffset(1, TokenTypes.Word).raw;
         this.skipMatched();
         // procure paramters if relevant
         if(hasParameters) {
             parameters = this.parseParameterized();
-            assert(this.hasAhead(TokenTypes.Colon), "Expected colon following METHOD argument list");
-            this.tokenIndex++;
         }
+        if(this.hasAhead(TokenTypes.ReturnTypeIndicator)) {
+            assert(this.hasSequenceAhead([ TokenTypes.ReturnTypeIndicator, TokenTypes.Word ]),
+                "Malformed return type indicator");
+            returnType = this.getTokenOffsetNoSpaces(1).raw;
+            this.skipMatched();
+        }
+        // console.log(this.tokens.slice(this.tokenIndex).map(c=>c.raw));
+        assert(this.hasAhead(TokenTypes.Colon), "Expected colon following METHOD argument list");
+        this.tokenIndex++;
         // assert at main level
         let baseLevel = this.indent.level;
         assert(this.indent.level === 0,
@@ -390,6 +406,7 @@ export class TreeParser {
         this.addNewNode(TreeNodeTypes.MethodDeclaration, {
             name: methodName,
             parameters,
+            returnType,
         }, children);
     }
 

@@ -8,6 +8,7 @@ export class CSkeletonizer {
     static CTypeMap = {
         "Int": "int",
         "Byte": "uint8_t",
+        "Void": "void",
     };
 
     static MAX_TEMPORARY_COUNT = 10;
@@ -25,13 +26,13 @@ export class CSkeletonizer {
         this.indentCount = indentCount;
         this.temporaries = {};
         for(let i = 0; i < CSkeletonizer.MAX_TEMPORARY_COUNT; i++) {
-            this.temporaries[`_${i}`] = false;
+            this.temporaries[`_temp_${i}`] = false;
         }
     }
 
     getTemporary() {
         for(let i = 0; i < CSkeletonizer.MAX_TEMPORARY_COUNT; i++) {
-            let name = `_${i}`;
+            let name = `_temp_${i}`;
             if(!this.temporaries[name]) {
                 this.temporaries[name] = true;
                 return name;
@@ -135,7 +136,9 @@ export class CSkeletonizer {
             }
         }
         else if(node.type === TreeNodeTypes.MethodDeclaration) {
-            let { name, parameters } = node.value;
+            let { name, parameters, returnType } = node.value;
+            returnType ||= "Void";
+            returnType = CSkeletonizer.CTypeMap[returnType];
             // TODO: return types
             assert(parameters.length % 2 === 0, "Expected a list of type-name pairs");
             let typedParameters = [];
@@ -146,8 +149,8 @@ export class CSkeletonizer {
             }
             // coaelesce empty arguments to the more proper ...fn(void) syntax
             let paramSignature = typedParameters.join(", ") || "void";
-            this.headerLines.push(`void ${name}(${paramSignature});`)
-            this.emit(`void ${name} (${paramSignature}) {`);
+            this.headerLines.push(`void ${name}(${paramSignature});`);
+            this.emit(`${returnType} ${name} (${paramSignature}) {`);
             this.emitGroupStart();
             for(let child of node.children) {
                 this.skeletonizeNode(child, level + 1);
