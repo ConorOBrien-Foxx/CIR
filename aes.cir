@@ -20,40 +20,17 @@ STRUCTURE State:
     Array(Byte, RowCount, ColumCount)
 
 STRUCTURE RoundKey:
-    PASS
-
-METHOD Encrypt:
-    MUTABLE State(state)
-    KeyExpansion()
-    // initial round key addition
-    AddRoundKey()
-    // interior rounds
-    REPEAT RoundCount - 1 TIMES:
-        SubBytes()
-        ShiftRows(state)
-        MixColumns()
-        AddRoundKey()
-    // final round
-    SubBytes()
-    ShiftRows()
-    AddRoundKey()
-
-METHOD KeyExpansion:
-    PASS
-
-METHOD SubBytes:
-    PASS
-
-METHOD ShiftRows(State state):
-    FOR rowIndex = 1 TO RowCount:
-        // the amount to shift increases with the row index
-        ShiftLeftBy(state[rowIndex], rowIndex)
-
-METHOD ShiftLeftBy(Array[Int, ColumCount] row, Int amount):
     TODO
-
+METHOD Encrypt:
+    TODO
+METHOD KeyExpansion:
+    TODO
+METHOD SubBytes:
+    TODO
+METHOD ShiftRows(State state):
+    TODO
 METHOD MixColumns(State state):
-    PASS
-
+    TODO
 METHOD AddRoundKey:
-    PASS
+    TODO
+    
