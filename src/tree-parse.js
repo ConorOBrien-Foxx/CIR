@@ -324,6 +324,20 @@ export class TreeParser {
         this.addNewNode(TreeNodeTypes.Else, { }, children);
     }
 
+    parseWhile() {
+        this.tokenIndex++;
+        let ifExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Colon ])) {
+            ifExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(this.hasTokensLeft(), "Runaway WHILE statement");
+        this.skipMatched();
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+        this.addNewNode(TreeNodeTypes.While, { condition: ifExpression }, children);
+    }
+
     parseSetMode() {
         assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.OpenParen ]),
             "Malformed SETMODE command");

@@ -37,7 +37,7 @@ const TokenRegexes = [
     [ /^[A-Za-z_][A-Za-z0-9_]*/, TokenTypes.Word ],
     [ /^[0-9]+/, TokenTypes.Number ],
     [ /^[\r\n]+/, TokenTypes.LineBreak ],
-    [ /^(?:[-+*\/!~^|&]|or|and|is)/, TokenTypes.Operator ],
+    [ /^(?:[-+*\/!~^|&><]|>=|<=|or|and|is)/, TokenTypes.Operator ],
     [ /^\(/, TokenTypes.OpenParen ],
     [ /^\)/, TokenTypes.CloseParen ],
     [ /^,/, TokenTypes.Comma ],

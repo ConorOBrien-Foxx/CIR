@@ -183,6 +183,17 @@ export class CSkeletonizer {
             this.emitGroupEnd();
             this.emit("}");
         }
+        else if(node.type === TreeNodeTypes.While) {
+            let { condition } = node.value;
+            let cExpression = this.getCExpression(condition);
+            this.emit(`while (${cExpression}) {`);
+            this.emitGroupStart();
+            for(let child of node.children) {
+                this.skeletonizeNode(child, level + 1);
+            }
+            this.emitGroupEnd();
+            this.emit("}");
+        }
         else if(node.type === TreeNodeTypes.ElseIf) {
             let { condition } = node.value;
             let cExpression = this.getCExpression(condition);

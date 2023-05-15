@@ -31,6 +31,8 @@ METHOD Test:
             TestFoo(3, 3)
         ELSE:
             TestFoo(9, 9)
+    WHILE other > 0:
+        other = other - 1
     TestBar()
     TestBar()
     TestBaz(1000)
