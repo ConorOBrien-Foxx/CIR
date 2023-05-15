@@ -18,9 +18,9 @@ const KEYWORD_LIST = `
     STRUCTURE
     METHOD
     REPEAT TIMES
-    SETMODE DEFAULT DEFINE CHOOSE
+    SETMODE DEFAULT DEFINE CHOOSE OPTION
     FOR TO
-    PASS RETURN
+    PASS RETURN TODO
     IF WHILE ELSE ELSEIF ELSIF ELIF
     MUTABLE
 `.trim().split(/\s+/);
@@ -37,7 +37,7 @@ const TokenRegexes = [
     [ /^[A-Za-z_][A-Za-z0-9_]*/, TokenTypes.Word ],
     [ /^[0-9]+/, TokenTypes.Number ],
     [ /^[\r\n]+/, TokenTypes.LineBreak ],
-    [ /^(?:[-+*\/!~^|&><]|>=|<=|or|and|is)/, TokenTypes.Operator ],
+    [ /^(?:[-+*\/!~^|&><]|\[|\]|>=|<=|or|and|is)/, TokenTypes.Operator ],
     [ /^\(/, TokenTypes.OpenParen ],
     [ /^\)/, TokenTypes.CloseParen ],
     [ /^,/, TokenTypes.Comma ],
@@ -79,7 +79,7 @@ export const tokenize = (string) => {
         }
         
         if(!token) {
-            throw new Error(`Unknown character: '${string[i]}'`);
+            throw new Error(`Unknown character at index ${i}: '${string[i]}'`);
         }
         
         if(token.type === TokenTypes.Spaces && token.raw.includes(" ") && token.raw.includes("\t")) {

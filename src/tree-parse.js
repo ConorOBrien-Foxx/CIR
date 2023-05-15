@@ -13,6 +13,7 @@ export const TreeNodeTypes = {
     MethodDeclaration: Symbol("TreeNodeTypes.MethodDeclaration"),
     MethodCall: Symbol("TreeNodeTypes.MethodCall"),
     Pass: Symbol("TreeNodeTypes.Pass"),
+    Todo: Symbol("TreeNodeTypes.Todo"),
     Comment: Symbol("TreeNodeTypes.Comment"),
     DefaultDefine: Symbol("TreeNodeTypes.DefaultDefine"),
     Define: Symbol("TreeNodeTypes.Define"),
@@ -23,6 +24,9 @@ export const TreeNodeTypes = {
     Else: Symbol("TreeNodeTypes.Else"),
     ElseIf: Symbol("TreeNodeTypes.ElseIf"),
     While: Symbol("TreeNodeTypes.While"),
+    Choose: Symbol("TreeNodeTypes.Choose"),
+    Option: Symbol("TreeNodeTypes.Option"),
+    For: Symbol("TreeNodeTypes.For"),
 };
 
 class TreeNode {
@@ -222,6 +226,9 @@ export class TreeParser {
             else if(keyword === "PASS") {
                 this.parsePass();
             }
+            else if(keyword === "TODO") {
+                this.parseTodo();
+            }
             else if(keyword === "DEFAULT") {
                 this.parseDefault();
             }
@@ -252,6 +259,15 @@ export class TreeParser {
             else if(keyword === "WHILE") {
                 this.parseWhile();
             }
+            else if(keyword === "CHOOSE") {
+                this.parseChoose();
+            }
+            else if(keyword === "OPTION") {
+                this.parseOption();
+            }
+            else if(keyword === "FOR") {
+                this.parseFor();
+            }
             else {
                 assert(null, `Unhandled keyword: ${keyword}`);
             }
@@ -279,6 +295,45 @@ export class TreeParser {
         let baseLevel = this.indent.level;
         let children = this.descendParse(baseLevel);
         this.addNewNode(TreeNodeTypes.Repeat, { condition: countExpression }, children);
+    }
+
+    parseFor() {
+        this.tokenIndex++;
+        let countExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Keyword ])) {
+            countExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(this.hasTokensLeft(), "Runaway FOR loop");
+        assert(this.findTokenFromOffset(0, TokenTypes.Keyword).raw === "TO",
+            "Expected TO after FOR expression");
+        this.skipMatched();
+
+        let toExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Colon ])) {
+            toExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(this.hasTokensLeft(), "Runaway FOR loop");
+        this.skipMatched();
+
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+        this.addNewNode(TreeNodeTypes.For, { from: countExpression, to: toExpression }, children);
+    }
+
+    parseOption() {
+        this.tokenIndex++;
+        let optionExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Colon ])) {
+            optionExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(this.hasTokensLeft(), "Runaway OPTION statement");
+        this.skipMatched();
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+        this.addNewNode(TreeNodeTypes.Option, { option: optionExpression }, children);
     }
 
     parseIf() {
@@ -336,6 +391,24 @@ export class TreeParser {
         let baseLevel = this.indent.level;
         let children = this.descendParse(baseLevel);
         this.addNewNode(TreeNodeTypes.While, { condition: ifExpression }, children);
+    }
+
+    parseChoose() {
+        assert(this.hasSequenceAhead([ TokenTypes.Keyword, TokenTypes.Word, TokenTypes.Colon ]),
+            "Malformed CHOOSE command");
+        
+        let defineName = this.findTokenFromOffset(1, TokenTypes.Word).raw;
+        this.skipMatched(); 
+        
+        assert(this.hasAhead(TokenTypes.LineBreak), "Expected line break after STRUCTURE command");
+        this.tokenIndex++;
+
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+
+        this.addNewNode(TreeNodeTypes.Choose, {
+            name: defineName
+        }, children);
     }
 
     parseSetMode() {
@@ -504,6 +577,11 @@ export class TreeParser {
         this.addNewNode(TreeNodeTypes.Pass);
     }
     
+    parseTodo() {
+        this.tokenIndex++;
+        this.addNewNode(TreeNodeTypes.Todo);
+    }
+    
     parseLineBreak() {
         // console.log("> skipping line break");
         this.tokenIndex++;
@@ -557,11 +635,11 @@ export class TreeParser {
     
     parseMethodEvaluation(word) {
         // console.log("> parse method eval");
-        let parameters = this.parseParameterized();
+        let parameters = this.parseParameterized(true);
         this.addNewNode(TreeNodeTypes.MethodCall, { method: word, parameters });
     }
     
-    parseParameterized() {
+    parseParameterized(includeCommas = false) {
         let declared = [];
         while(!this.hasAhead(TokenTypes.CloseParen)) {
             assert(this.hasTokensLeft(), "Runaway variable declaration for ${type}");
@@ -571,10 +649,15 @@ export class TreeParser {
             }
             // TODO: assert ("comma" + "space"?) repeated?
             else if(this.hasOptionAhead([ TokenTypes.Comma, TokenTypes.Spaces ])) {
+                if(includeCommas) {
+                    declared.push(this.getTokenOffset(0));
+                }
                 this.tokenIndex++;
             }
             else {
-                assert(null, `Unexpected token: ${this.getTokenOffset(0).dump()}`);
+                // assert(null, `Unexpected token: ${this.getTokenOffset(0).dump()}`);
+                declared.push(this.getTokenOffset(0));
+                this.tokenIndex++;
             }
         }
         this.tokenIndex++; // skip `)`

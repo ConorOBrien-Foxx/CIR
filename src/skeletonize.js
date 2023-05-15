@@ -30,6 +30,7 @@ export class CSkeletonizer {
         for(let i = 0; i < CSkeletonizer.MAX_TEMPORARY_COUNT; i++) {
             this.temporaries[`_temp_${i}`] = false;
         }
+        this.typeMap = Object.assign({}, CSkeletonizer.CTypeMap);
     }
 
     getTemporary() {
@@ -69,7 +70,7 @@ export class CSkeletonizer {
 
     inferType(token) {
         if(token.type === TokenTypes.Number) {
-            return CSkeletonizer.CTypeMap["Int"];
+            return this.typeMap["Int"];
         }
         // TODO: local scope
         else if(token.type === TokenTypes.Word) {
@@ -108,7 +109,7 @@ export class CSkeletonizer {
         else if(node.type === TreeNodeTypes.Declaration) {
             let { type, declared, mutable } = node.value;
             // console.log("VARIABLE", type,declared,mutable);
-            let cType = CSkeletonizer.CTypeMap[type] ?? type;
+            let cType = this.typeMap[type] ?? type;
             let variables = declared.map(token => token.raw);
             // TODO: array type
             for(let v of variables) {
@@ -135,32 +136,61 @@ export class CSkeletonizer {
                 "Complex structures currently unimplemented");
             let { name } = node.value;
             let [ child ] = node.children;
-            assert(child.type === TreeNodeTypes.Declaration,
-                "Structure must have a variable declaration");
-            let data = child.value;
-            if(data.type === "Array") {
-                let subType = CSkeletonizer.CTypeMap[data.declared[0].raw]; 
-                let dimensions = data.declared
-                    .slice(1)
-                    .map(token => `[${token.raw}]`)
-                    .join("");
-                this.emit(`typedef ${subType} ${name}${dimensions};`);
+            console.log(child);
+            this.typeMap[name] = name;
+            if(child.type === TreeNodeTypes.Pass || child.type === TreeNodeTypes.Todo) {
+                this.emit(`typedef /* TODO: FILL */ ${name};`);
             }
             else {
-                toImplement("Other structure datatypes besides array");
+                assert(child.type === TreeNodeTypes.Declaration,
+                    "Structure must have a variable declaration");
+                let data = child.value;
+                if(data.type === "Array") {
+                    let subType = this.typeMap[data.declared[0].raw];
+                    let dimensions = data.declared
+                        .slice(1)
+                        .map(token => `[${token.raw}]`)
+                        .join("");
+                    this.emit(`typedef ${subType} ${name}${dimensions};`);
+                }
+                else {
+                    toImplement("Other structure datatypes besides array");
+                }
             }
         }
         else if(node.type === TreeNodeTypes.MethodDeclaration) {
             let { name, parameters, returnType } = node.value;
             returnType ||= "Void";
-            returnType = CSkeletonizer.CTypeMap[returnType];
-            // TODO: return types
-            assert(parameters.length % 2 === 0, "Expected a list of type-name pairs");
+            returnType = this.typeMap[returnType];
+            console.log(parameters);
+            let parsedParameters = [];
+            for(let i = 0; i < parameters.length; i++) {
+                if(parameters[i].raw === "Array") {
+                    assert(parameters[i + 1].raw === "[");
+                    let j = parameters.findIndex((c, idx) => c.raw === "]" && idx > i);
+                    let dims = parameters.slice(i + 2, j).map(e => e.raw);
+                    let base = dims.shift();
+                    parsedParameters.push([base, dims.map(c => `[${c}]`).join("")]);
+                    i = j;
+                }
+                else {
+                    parsedParameters.push(parameters[i].raw);
+                }
+            }
+            assert(parsedParameters.length % 2 === 0, "Expected a list of type-name pairs");
             let typedParameters = [];
-            for(let i = 0; i < parameters.length; i += 2) {
-                let cType = CSkeletonizer.CTypeMap[parameters[i].raw];
-                let paramName = parameters[i + 1].raw;
-                typedParameters.push(`${cType} ${paramName}`);
+            for(let i = 0; i < parsedParameters.length; i += 2) {
+                let cType = parsedParameters[i];
+                cType = this.typeMap[cType] ?? cType;
+                let paramName = parsedParameters[i + 1];
+                if(Array.isArray(cType)) {
+                    let [ prefix, suffix ] = cType;
+                    prefix = this.typeMap[prefix] ?? prefix;
+                    typedParameters.push(`${prefix} ${paramName}${suffix}`);
+                }
+                else {
+                    typedParameters.push(`${cType} ${paramName}`);
+                }
             }
             // coaelesce empty arguments to the more proper ...fn(void) syntax
             let paramSignature = typedParameters.join(", ") || "void";
@@ -195,6 +225,32 @@ export class CSkeletonizer {
             this.emitGroupEnd();
             this.emit("}");
         }
+        else if(node.type === TreeNodeTypes.Choose) {
+            let modeName = node.value.name;
+            for(let option of node.children) {
+                let optionWord = option.value.option.find(c => c.type === TokenTypes.Word);
+                console.log(option.children);
+                this.emit(`#ifdef ${modeName}_${optionWord.raw}`);
+                this.emitGroupStart();
+                for(let child of option.children) {
+                    this.skeletonizeNode(child, level + 1);
+                }
+                this.emitGroupEnd();
+                this.emit(`#endif`);
+            }
+        }
+        else if(node.type === TreeNodeTypes.For) {
+            let cStart = this.getCExpression(node.value.from);
+            let iterator = node.value.from.find(c => c.type === TokenTypes.Word).raw;
+            let cEnd = this.getCExpression(node.value.to);
+            this.emit(`for(int ${cStart}; ${iterator} <= ${cEnd}; ${iterator}++) {`);
+            this.emitGroupStart();
+            for(let child of node.children) {
+                this.skeletonizeNode(child, level + 1);
+            }
+            this.emitGroupEnd();
+            this.emit(`}`);
+        }
         else if(node.type === TreeNodeTypes.ElseIf) {
             let { condition } = node.value;
             let cExpression = this.getCExpression(condition);
@@ -220,15 +276,16 @@ export class CSkeletonizer {
             // console.log(node);
             let { method, parameters } = node.value;
             let methodName = method.raw;
-            let joinedParameters = parameters
+            let joinedParameters = this.getCExpression(parameters);
+            /*parameters
                 .map(token => token.raw)
-                .join(", ");
+                .join(" ");*/
             // // infer type
             // let inferredType = parameters.map(token => this.inferType(token));
             // console.log("INFERRED", inferredType);
             this.emit(`${methodName}(${joinedParameters});`);
         }
-        else if(node.type === TreeNodeTypes.Pass) {
+        else if(node.type === TreeNodeTypes.Pass || node.type === TreeNodeTypes.Todo) {
             // NOTE: the TODO comment is actually supposed to be emitted here
             this.emit("//TODO:");
         }
@@ -275,6 +332,7 @@ export class CSkeletonizer {
         else if(node.type === TreeNodeTypes.Repeat) {
             //TODO: pretty print expression
             // (e.g. `(3+4)` => `(3 + 4)` instead of `( 3 + 4 )`)
+            console.log(node.value);
             let conditionExpression = node.value.condition
                 .filter(token => token.type !== TokenTypes.Spaces)
                 .map(token => token.raw)
