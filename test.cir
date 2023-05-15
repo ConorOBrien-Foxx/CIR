@@ -16,6 +16,7 @@ STRUCTURE State:
     Array(Byte, RowCount, ColumCount)
 
 METHOD Test:
+    Name(mine)
     MUTABLE Int(temp, other)
     temp = 15
     other = TestReturn()

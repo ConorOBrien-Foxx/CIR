@@ -108,12 +108,13 @@ export class CSkeletonizer {
         else if(node.type === TreeNodeTypes.Declaration) {
             let { type, declared, mutable } = node.value;
             // console.log("VARIABLE", type,declared,mutable);
-            let cType = CSkeletonizer.CTypeMap[type];
+            let cType = CSkeletonizer.CTypeMap[type] ?? type;
             let variables = declared.map(token => token.raw);
             // TODO: array type
             for(let v of variables) {
                 this.typeInfo[v] =  { cType, mutable };
             }
+            this.emit(`${cType} ${variables.join(", ")};`);
         }
         else if(node.type === TreeNodeTypes.Assignment) {
             // assuming immutable for now

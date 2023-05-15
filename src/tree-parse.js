@@ -443,6 +443,8 @@ export class TreeParser {
         this.addNewNode(TreeNodeTypes.Structure, {
             name: structureName
         }, [ node ]);
+
+        this.typeContext[structureName] = WordTypes.Type;
     }
     
     parseMethodDeclaration() {
