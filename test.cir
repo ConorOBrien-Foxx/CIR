@@ -26,7 +26,7 @@ METHOD Test:
     TestBaz(1000)
 
 METHOD TestReturn -> Int:
-    PASS
+    RETURN 30
 
 METHOD TestFoo(Byte x, Int y):
     PASS

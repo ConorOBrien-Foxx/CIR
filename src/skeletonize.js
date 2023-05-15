@@ -231,6 +231,13 @@ export class CSkeletonizer {
             this.emitGroupEnd();
             this.emit("}");
         }
+        else if(node.type === TreeNodeTypes.Return) {
+            let cExpression = node.value.expression
+                .map(token => token.raw)
+                .join(" ")
+                .trim();
+            this.emit(`return ${cExpression};`);
+        }
         else {
             toImplement(`${node.type.toString()}`);
         }

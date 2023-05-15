@@ -20,7 +20,7 @@ const KEYWORD_LIST = `
     REPEAT TIMES
     SETMODE DEFAULT DEFINE CHOOSE
     FOR TO
-    PASS
+    PASS RETURN
     MUTABLE
 `.trim().split(/\s+/);
 

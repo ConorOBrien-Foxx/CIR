@@ -18,6 +18,7 @@ export const TreeNodeTypes = {
     Define: Symbol("TreeNodeTypes.Define"),
     SetMode: Symbol("TreeNodeTypes.SetMode"),
     Repeat: Symbol("TreeNodeTypes.Repeat"),
+    Return: Symbol("TreeNodeTypes.Return"),
 };
 
 class TreeNode {
@@ -232,6 +233,9 @@ export class TreeParser {
             else if(keyword === "REPEAT") {
                 this.parseRepeat();
             }
+            else if(keyword === "RETURN") {
+                this.parseReturn();
+            }
             else {
                 assert(null, `Unhandled keyword: ${keyword}`);
             }
@@ -443,6 +447,20 @@ export class TreeParser {
             this.tokenIndex++;
         }
         this.addNewNode(TreeNodeTypes.Assignment, { variable: variableName, expression });
+    }
+
+    parseReturn() {
+        this.tokenIndex++;
+        let expression = [];
+        while(this.hasTokensLeft()) {
+            let token = this.getTokenOffset(0);
+            if(token.type === TokenTypes.LineBreak) {
+                break;
+            }
+            expression.push(token);
+            this.tokenIndex++;
+        }
+        this.addNewNode(TreeNodeTypes.Return, { expression });
     }
     
     parseTypeDeclaration(word) {
