@@ -20,6 +20,8 @@ export class CSkeletonizer {
         this.codeLines = [];
         this.includeLines = [
             "#include <stdint.h>",
+            "#define true (1)",
+            "#define false (0)",
         ]
         this.headerLines = [];
         this.emitLevel = 0;
@@ -77,7 +79,21 @@ export class CSkeletonizer {
         else {
             assert(null, `Cannot infer the type of ${token.dump()}`);
         }
-    } 
+    }
+
+    getCExpression(expression) {
+        return expression
+            .map(token =>
+                token.raw === "and"
+                    ? "&&"
+                    : token.raw === "or"
+                        ? "||"
+                        : token.raw === "is"
+                            ? "=="
+                            : token.raw)
+            .join("")
+            .trim();
+    }
 
     skeletonizeNode(node, level = 0) {
         if(node.type === TreeNodeTypes.Comment) {
@@ -102,9 +118,7 @@ export class CSkeletonizer {
         else if(node.type === TreeNodeTypes.Assignment) {
             // assuming immutable for now
             let { variable, expression } = node.value;
-            let cExpression = expression
-                .map(token => token.raw)
-                .join(" ");
+            let cExpression = this.getCExpression(expression);
             let { cType, mutable } = this.typeInfo[variable];
             // console.log(node.value.expression);
             if(mutable) {
@@ -151,6 +165,37 @@ export class CSkeletonizer {
             let paramSignature = typedParameters.join(", ") || "void";
             this.headerLines.push(`void ${name}(${paramSignature});`);
             this.emit(`${returnType} ${name} (${paramSignature}) {`);
+            this.emitGroupStart();
+            for(let child of node.children) {
+                this.skeletonizeNode(child, level + 1);
+            }
+            this.emitGroupEnd();
+            this.emit("}");
+        }
+        else if(node.type === TreeNodeTypes.If) {
+            let { condition } = node.value;
+            let cExpression = this.getCExpression(condition);
+            this.emit(`if (${cExpression}) {`);
+            this.emitGroupStart();
+            for(let child of node.children) {
+                this.skeletonizeNode(child, level + 1);
+            }
+            this.emitGroupEnd();
+            this.emit("}");
+        }
+        else if(node.type === TreeNodeTypes.ElseIf) {
+            let { condition } = node.value;
+            let cExpression = this.getCExpression(condition);
+            this.emit(`else if (${cExpression}) {`);
+            this.emitGroupStart();
+            for(let child of node.children) {
+                this.skeletonizeNode(child, level + 1);
+            }
+            this.emitGroupEnd();
+            this.emit("}");
+        }
+        else if(node.type === TreeNodeTypes.Else) {
+            this.emit(`else {`);
             this.emitGroupStart();
             for(let child of node.children) {
                 this.skeletonizeNode(child, level + 1);
@@ -232,10 +277,7 @@ export class CSkeletonizer {
             this.emit("}");
         }
         else if(node.type === TreeNodeTypes.Return) {
-            let cExpression = node.value.expression
-                .map(token => token.raw)
-                .join(" ")
-                .trim();
+            let cExpression = this.getCExpression(node.value.expression);
             this.emit(`return ${cExpression};`);
         }
         else {

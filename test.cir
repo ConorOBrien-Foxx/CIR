@@ -21,6 +21,16 @@ METHOD Test:
     other = TestReturn()
     REPEAT temp - 1 TIMES:
         TestFoo(10, temp)
+    IF temp is 15:
+        TestFoo(0, 0)
+    ELIF temp is 30:
+        TestFoo(1, 1)
+        TestFoo(1, 2)
+    ELSE:
+        IF true:
+            TestFoo(3, 3)
+        ELSE:
+            TestFoo(9, 9)
     TestBar()
     TestBar()
     TestBaz(1000)

@@ -19,6 +19,10 @@ export const TreeNodeTypes = {
     SetMode: Symbol("TreeNodeTypes.SetMode"),
     Repeat: Symbol("TreeNodeTypes.Repeat"),
     Return: Symbol("TreeNodeTypes.Return"),
+    If: Symbol("TreeNodeTypes.If"),
+    Else: Symbol("TreeNodeTypes.Else"),
+    ElseIf: Symbol("TreeNodeTypes.ElseIf"),
+    While: Symbol("TreeNodeTypes.While"),
 };
 
 class TreeNode {
@@ -236,6 +240,18 @@ export class TreeParser {
             else if(keyword === "RETURN") {
                 this.parseReturn();
             }
+            else if(keyword === "IF") {
+                this.parseIf();
+            }
+            else if(keyword === "ELSE") {
+                this.parseElse();
+            }
+            else if(keyword === "ELSEIF" || keyword === "ELSIF" || keyword === "ELIF") {
+                this.parseElseIf();
+            }
+            else if(keyword === "WHILE") {
+                this.parseWhile();
+            }
             else {
                 assert(null, `Unhandled keyword: ${keyword}`);
             }
@@ -263,6 +279,49 @@ export class TreeParser {
         let baseLevel = this.indent.level;
         let children = this.descendParse(baseLevel);
         this.addNewNode(TreeNodeTypes.Repeat, { condition: countExpression }, children);
+    }
+
+    parseIf() {
+        this.tokenIndex++;
+        let ifExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Colon ])) {
+            ifExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(this.hasTokensLeft(), "Runaway IF statement");
+        this.skipMatched();
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+        this.addNewNode(TreeNodeTypes.If, { condition: ifExpression }, children);
+    }
+
+    parseElseIf() {
+        this.tokenIndex++;
+        let ifExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Colon ])) {
+            ifExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(this.hasTokensLeft(), "Runaway ELSEIF statement");
+        this.skipMatched();
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+        this.addNewNode(TreeNodeTypes.ElseIf, { condition: ifExpression }, children);
+    }
+
+    parseElse() {
+        this.tokenIndex++;
+        let ifExpression = [];
+        while(this.hasTokensLeft() && !this.hasSequenceAhead([ TokenTypes.Colon ])) {
+            ifExpression.push(this.getTokenOffset(0));
+            this.tokenIndex++;
+        }
+        assert(ifExpression.length === 0, "Unexpected condition following ELSE");
+        assert(this.hasTokensLeft(), "Runaway ELSEIF statement");
+        this.skipMatched();
+        let baseLevel = this.indent.level;
+        let children = this.descendParse(baseLevel);
+        this.addNewNode(TreeNodeTypes.Else, { }, children);
     }
 
     parseSetMode() {
